@@ -1,0 +1,56 @@
+openapi: 3.0.3
+info:
+  title: Generated API
+  version: "1.0"
+paths:
+  /orders/{orderId}/process":
+    post:
+      tags:
+        - Order
+      operationId: "processOrder"
+      parameters:
+        - name: 'orderId'
+          in: 'path'
+          description: 'ID order'
+          schema:
+            type: integer
+          required: true
+      #requestBody:
+        #content:
+          #application/json:
+            #schema:
+             # $ref: '#/components/schemas/Fruit'
+      responses:
+        200:
+          description: OK
+          content:
+            application/json: { }
+
+  /orders/{orderId}:
+    get:
+      tags:
+        - Order
+      operationId: "findProcessOrder"
+      parameters:
+        - name: 'orderId'
+          in: 'path'
+          description: 'ID order'
+          schema:
+            type: integer
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json: { }
+components:
+  schemas:
+    Order:
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the order
+        description:
+          type: string
+        name:
+          type: string
