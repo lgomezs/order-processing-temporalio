@@ -20,21 +20,24 @@ permissions:
 env:
   JAVA_VERSION: '21'
   IMAGE_NAME: order-processing
-  REGISTRY:  ${{ secrets.REGISTRY_URL }}
+  REGISTRY: ${{ secrets.REGISTRY_URL }}
 
 jobs:
   deploy-snapshot:
     name: Build & Publish Snapshot Image
     runs-on: ubuntu-latest
 
-    # Solo snapshots para DES/PRE
-    if: |
-      contains(inputs.SUPRAENVS, 'des') ||
-      contains(inputs.SUPRAENVS, 'pre')
+    # Solo DES/PRE
+    if: contains(inputs.SUPRAENVS, 'des') || contains(inputs.SUPRAENVS, 'pre')
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Print workflow inputs
+        run: |
+          echo "SUPRAENVS=${{ inputs.SUPRAENVS }}"
+          echo "ENVS=${{ inputs.ENVS }}"
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -43,22 +46,25 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
-      - name: Grant execute permission to mvnw
-        run: chmod +x mvnw
+      - name: Verify Maven installation
+        run: mvn -version
 
       - name: Validate snapshot version
         run: |
-          VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=$(mvn help:evaluate \
+            -Dexpression=project.version \
+            -q \
+            -DforceStdout)
 
           echo "Detected version: $VERSION"
 
           if [[ "$VERSION" != *"-SNAPSHOT" ]]; then
             echo "ERROR: Este workflow solo soporta versiones SNAPSHOT"
             exit 1
-          fi     
+          fi
 
       - name: Build Quarkus application
-        run: ./mvnw clean package -DskipTests
+        run: mvn clean package -DskipTests
 
       - name: Validate Dockerfile.jvm exists
         run: |
@@ -69,7 +75,7 @@ jobs:
 
           echo "Dockerfile.jvm encontrado correctamente"
 
-      - name: Build Docker image using Dockerfile.jvm
+      - name: Build Docker image
         run: |
           docker build \
             -f src/main/docker/Dockerfile.jvm \
