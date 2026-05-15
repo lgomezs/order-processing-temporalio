@@ -1,0 +1,103 @@
+name: paas-maven-deploy-snapshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      SUPRAENVS:
+        description: "Supraentornos destino (des/pre)"
+        required: true
+        type: string
+
+      ENVS:
+        description: "Entornos destino"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  JAVA_VERSION: '21'
+  IMAGE_NAME: order-processing
+  REGISTRY:  ${{ secrets.REGISTRY_URL }}
+
+jobs:
+  deploy-snapshot:
+    name: Build & Publish Snapshot Image
+    runs-on: ubuntu-latest
+
+    # Solo snapshots para DES/PRE
+    if: |
+      contains(inputs.SUPRAENVS, 'des') ||
+      contains(inputs.SUPRAENVS, 'pre')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Validate snapshot version
+        run: |
+          VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+
+          echo "Detected version: $VERSION"
+
+          if [[ "$VERSION" != *"-SNAPSHOT" ]]; then
+            echo "ERROR: Este workflow solo soporta versiones SNAPSHOT"
+            exit 1
+          fi
+
+      - name: Build Quarkus application
+        run: |
+          chmod +x mvnw
+
+          ./mvnw clean package -DskipTests
+
+      - name: Validate Dockerfile.jvm exists
+        run: |
+          if [ ! -f src/main/docker/Dockerfile.jvm ]; then
+            echo "ERROR: No existe src/main/docker/Dockerfile.jvm"
+            exit 1
+          fi
+
+          echo "Dockerfile.jvm encontrado correctamente"
+
+      - name: Build Docker image using Dockerfile.jvm
+        run: |
+          docker build \
+            -f src/main/docker/Dockerfile.jvm \
+            -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+
+      - name: Login to Distribution Platform
+        env:
+          DP_USERNAME: ${{ secrets.DP_USERNAME }}
+          DP_PASSWORD: ${{ secrets.DP_PASSWORD }}
+        run: |
+          echo "${DP_PASSWORD}" | docker login ${{ env.REGISTRY }} \
+            -u "${DP_USERNAME}" \
+            --password-stdin
+
+      - name: Tag Docker image
+        run: |
+          docker tag \
+            ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Publish Docker image
+        run: |
+          docker push \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deployment summary
+        run: |
+          echo "Deploy snapshot completado"
+          echo "SUPRAENVS=${{ inputs.SUPRAENVS }}"
+          echo "ENVS=${{ inputs.ENVS }}"
+          echo "IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
