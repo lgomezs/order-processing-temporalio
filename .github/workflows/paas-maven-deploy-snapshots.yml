@@ -43,6 +43,9 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
+      - name: Grant execute permission to mvnw
+        run: chmod +x mvnw
+
       - name: Validate snapshot version
         run: |
           VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
@@ -52,10 +55,7 @@ jobs:
           if [[ "$VERSION" != *"-SNAPSHOT" ]]; then
             echo "ERROR: Este workflow solo soporta versiones SNAPSHOT"
             exit 1
-          fi
-
-      - name: Grant execute permission to mvnw
-        run: chmod +x mvnw
+          fi     
 
       - name: Build Quarkus application
         run: ./mvnw clean package -DskipTests
