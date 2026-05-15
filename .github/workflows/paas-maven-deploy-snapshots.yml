@@ -19,7 +19,7 @@ permissions:
 
 env:
   JAVA_VERSION: '21'
-  IMAGE_NAME: order-processing
+  IMAGE_NAME: lgomezs/order-processing
   REGISTRY: ${{ secrets.REGISTRY_URL }}
 
 jobs:
