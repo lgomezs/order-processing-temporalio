@@ -54,11 +54,11 @@ jobs:
             exit 1
           fi
 
-      - name: Build Quarkus application
-        run: |
-          chmod +x mvnw
+      - name: Grant execute permission to mvnw
+        run: chmod +x mvnw
 
-          ./mvnw clean package -DskipTests
+      - name: Build Quarkus application
+        run: ./mvnw clean package -DskipTests
 
       - name: Validate Dockerfile.jvm exists
         run: |
