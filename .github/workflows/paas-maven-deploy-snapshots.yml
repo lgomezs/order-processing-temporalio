@@ -83,6 +83,18 @@ jobs:
 
           echo "Dockerfile.jvm encontrado correctamente"
 
+      - name: Extract project version
+        id: version
+        run: |
+          VERSION=$(mvn help:evaluate \
+            -Dexpression=project.version \
+            -q \
+            -DforceStdout)
+
+          echo "VERSION=$VERSION"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Build Docker image
         run: |
           docker build \
@@ -101,13 +113,28 @@ jobs:
       - name: Tag Docker image
         run: |
           docker tag \
+           ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+
+          docker tag \
             ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+          docker tag \
+            ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest           
+          
 
       - name: Publish Docker image
         run: |
           docker push \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+
+          docker push \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+          docker push \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Deployment summary
         run: |
