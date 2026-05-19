@@ -106,7 +106,7 @@ jobs:
           DP_USERNAME: ${{ secrets.DP_USERNAME }}
           DP_PASSWORD: ${{ secrets.DP_PASSWORD }}
         run: |
-          echo "${DP_PASSWORD}" | docker login \
+          echo "${DP_PASSWORD}" | docker login docker.io \
             -u "${DP_USERNAME}" \
             --password-stdin
 
@@ -136,13 +136,18 @@ jobs:
           docker push \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
+      - name: Trigger Render Deployment
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+
       - name: Deployment summary
         run: |
           echo "Deploy snapshot completado"
           echo "SUPRAENVS=${{ inputs.SUPRAENVS }}"
           echo "ENVS=${{ inputs.ENVS }}"
           echo "IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-
+     
       - name: Comment PR Success
         if: success()
         uses: actions/github-script@v7
